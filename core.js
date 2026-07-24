@@ -1,0 +1,9 @@
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.WeightCore=api})(typeof self!=='undefined'?self:this,function(){
+const round=n=>Math.round(n*10)/10;
+function normalizeRecords(records){return [...records].filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date)&&Number.isFinite(Number(r.weight))).map(r=>({date:r.date,weight:round(Number(r.weight)),memo:String(r.memo||'').slice(0,80),updatedAt:r.updatedAt||new Date().toISOString()})).sort((a,b)=>a.date.localeCompare(b.date))}
+function upsertRecord(records,record){const clean=normalizeRecords(records).filter(r=>r.date!==record.date);clean.push(record);return normalizeRecords(clean)}
+function dayDiff(records,date){const list=normalizeRecords(records),i=list.findIndex(r=>r.date===date);if(i<0||i===0)return null;return round(list[i].weight-list[i-1].weight)}
+function movingAverage(records,index,window=7){const list=normalizeRecords(records),slice=list.slice(Math.max(0,index-window+1),index+1);return round(slice.reduce((s,r)=>s+r.weight,0)/slice.length)}
+function rangeRecords(records,days,nowDate){const list=normalizeRecords(records);if(days==='all')return list;const end=new Date(nowDate+'T00:00:00');const start=new Date(end);start.setDate(start.getDate()-Number(days)+1);const iso=start.toISOString().slice(0,10);return list.filter(r=>r.date>=iso&&r.date<=nowDate)}
+function validateBackup(data){if(!data||data.version!==1||!Array.isArray(data.records)||typeof data.settings!=='object')throw new Error('対応していないバックアップ形式です');return{version:1,records:normalizeRecords(data.records),settings:{goalWeight:data.settings.goalWeight?round(Number(data.settings.goalWeight)):null,goalDate:data.settings.goalDate||''},exportedAt:data.exportedAt||''}}
+return{round,normalizeRecords,upsertRecord,dayDiff,movingAverage,rangeRecords,validateBackup}});
